@@ -1,0 +1,7 @@
+---
+# handlers file for dnscrypt
+
+- name: Restart dnscrypt
+  service: 
+    name: dnscrypt-proxy
+    state: restarted

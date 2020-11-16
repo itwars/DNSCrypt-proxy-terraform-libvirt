@@ -1,0 +1,49 @@
+---
+# tasks file for dnscrypt
+
+- name: Update cache  
+  shell:
+    cmd: apk update
+
+- name: Upgrade Alpine
+  shell:
+    cmd: apk upgrade
+
+- name: Install dnscrypt
+  package:
+    name: dnscrypt-proxy
+    state: latest
+    update_cache: yes
+
+- name: Copy dnscrypt config file
+  copy:
+    src: files/dnscrypt-proxy.toml
+    dest: /etc/dnscrypt-proxy/
+    owner: root
+    group: root
+    mode: 0644
+
+- name: Enable dnscrypt-proxy service on startup
+  service:
+    name: dnscrypt-proxy
+    enabled: yes
+
+- name: Copy ad-block script 
+  copy: 
+    src:  files/update-adblocker.sh
+    dest: /usr/bin/update-adblocker.sh
+    owner: root
+    group: root
+    mode: u+x,g+x,o+x
+
+- name: Creates a cron file under /etc/cron.d
+  cron:
+    name: ad-block
+    special_time: daily
+    user: root
+    job: /usr/bin/update-adblocker.sh
+
+- name: Run script to init adblock
+  command: /usr/bin/update-adblocker.sh
+  notify: 
+    - Restart dnscrypt
