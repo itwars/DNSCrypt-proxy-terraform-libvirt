@@ -1,0 +1,80 @@
+{
+  "variables":
+    {
+      "cpu": "1",
+      "ram": "1024",
+      "name": "alpine",
+      "disk_size": "1000",
+      "iso_checksum": "fe694a34c0e2d30b9e5dea7e2c1a3892c1f14cb474b69cc5c557a52970071da5",
+      "iso_checksum_type": "sha256",
+      "iso_urls": "http://dl-cdn.alpinelinux.org/alpine/latest-stable/releases/x86_64/alpine-virt-3.12.0-x86_64.iso",
+      "version": "3.12.0",
+      "headless": "true",
+      "ssh_username": "root",
+      "ssh_password": "toor"
+    },
+  "builders": [
+    {
+      "name": "{{user `name`}}-{{user `version`}}",
+      "type": "qemu",
+      "format": "qcow2",
+      "accelerator": "kvm",
+      "qemu_binary": "/usr/bin/qemu-system-x86_64",
+      "net_device": "virtio-net",
+      "disk_interface": "virtio",
+      "disk_cache": "none",
+      "qemuargs": [[ "-m", "{{user `ram`}}M" ],[ "-smp", "{{user `cpu`}}" ]],
+      "ssh_wait_timeout": "30m",
+      "http_directory": ".",
+      "http_port_min": 10082,
+      "http_port_max": 10089,
+      "ssh_host_port_min": 2222,
+      "ssh_host_port_max": 2229,
+      "ssh_username": "{{user `ssh_username`}}",
+      "ssh_password": "{{user `ssh_password`}}",
+      "iso_urls": "{{user `iso_urls`}}",
+      "iso_checksum": "{{user `iso_checksum`}}",
+      "boot_wait": "15s",
+      "boot_command": [
+        "root<enter>",
+        "ifconfig eth0 up \u0026\u0026 udhcpc -i eth0<enter><wait5>",
+        "wget -qO answers http://{{.HTTPIP}}:{{.HTTPPort}}/answers<enter><wait>",
+        "setup-alpine -f answers<enter><wait5>",
+        "toor<enter>",
+        "toor<enter>",
+        "<wait10>",
+        "y<enter>",
+        "<wait10><wait10>",
+        "mount /dev/vda2 /mnt<enter>",
+        "sed -i -E 's,#?(PermitRootLogin\\s+).+,\\1yes,' /mnt/etc/ssh/sshd_config<enter>",
+        "<wait10>",
+        "umount /mnt<enter>",
+        "<wait10>",
+        "reboot<enter>"
+      ],
+      "disk_size": "{{user `disk_size`}}",
+      "disk_discard": "unmap",
+      "disk_compression": true,
+      "headless": "{{user `headless`}}",
+      "shutdown_command": "poweroff",
+      "output_directory": "{{user `name`}}-{{user `version`}}"
+    }
+  ],
+  "provisioners": [
+    {
+      "inline": [
+        "echo http://dl-cdn.alpinelinux.org/alpine/edge/community >> /etc/apk/repositories",
+	     "echo http://dl-cdn.alpinelinux.org/alpine/edge/main >> /etc/apk/repositories",
+        "apk update",
+        "apk add dbus avahi",
+        "apk add cloud-init cloud-utils",
+	     "apk add qemu-guest-agent python3",
+	     "echo GA_PATH=\"/dev/vport1p1\" >> /etc/conf.d/qemu-guest-agent",
+	     "rc-update add cloud-init default",
+	     "rc-update add qemu-guest-agent default",
+        "/sbin/setup-cloud-init"
+      ],
+      "type": "shell"
+    }
+  ]
+}
